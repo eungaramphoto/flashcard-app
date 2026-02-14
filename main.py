@@ -45,6 +45,7 @@ def deck_page(deck_name):
     show = request.args.get("show")
     current = request.args.get("current")
 
+    # 안전한 리스트 변환
     def parse_list(param):
         try:
             return [int(i) for i in param.split(",") if i.strip().isdigit()]
@@ -53,16 +54,15 @@ def deck_page(deck_name):
 
     used_list = parse_list(used)
     again_list = parse_list(again)
-
     total_indices = list(range(len(words)))
 
-    # remaining 계산 (안전 처리)
+    # remaining 계산
     if again_list and round_num > 1:
         remaining = [i for i in again_list if i not in used_list]
     else:
         remaining = [i for i in total_indices if i not in used_list]
 
-    # remaining이 비면 다음 회독 혹은 피니시 처리
+    # remaining이 비면 다음 회독 또는 피니시
     if not remaining:
         if again_list:
             # 다음 회독 시작
@@ -98,11 +98,12 @@ def deck_page(deck_name):
 
     card = words[idx]
 
-    # URL 파라미터 문자열
+    # used/again 문자열
     new_used = used_list if show else used_list + [idx]
     used_str = ",".join(map(str, new_used))
     again_str = ",".join(map(str, again_list))
 
+    # HTML 구조: 카드 + 정답/해설/예문 → 버튼 위쪽
     return render_template_string("""
     <html>
     <head>
@@ -110,9 +111,9 @@ def deck_page(deck_name):
       <style>
         body { font-family: Arial; text-align:center; padding:30px; }
         h2 { font-size: 28px; margin-bottom: 30px; }
-        .card { font-size: 32px; margin: 50px auto; }
-        .answer { font-size: 22px; margin-top: 20px; }
-        .example { font-size: 16px; max-width: 700px; margin: 20px auto; text-align:center; }
+        .card { font-size: 32px; margin: 20px auto; }
+        .answer { font-size: 22px; margin-top: 15px; }
+        .example { font-size: 16px; max-width: 700px; margin: 15px auto; text-align:center; }
         button { display:block; font-size:20px; padding:14px 20px; margin:10px auto; width:80%; max-width:350px; }
       </style>
     </head>
@@ -120,6 +121,12 @@ def deck_page(deck_name):
       <h2>{{deck_name}} ({{round_num}}회독)</h2>
 
       <div class="card">{{card["front"]}}</div>
+
+      {% if show %}
+        <div class="answer"><b>{{card["back"]}}</b></div>
+        {% if card.get("explanation") %}<div class="answer">{{card["explanation"]}}</div>{% endif %}
+        {% if card.get("example") %}<div class="example">{{card["example"]}}</div>{% endif %}
+      {% endif %}
 
       <form method="get" action="/deck/{{deck_name}}">
         <input type="hidden" name="used" value="{{used_str}}">
@@ -149,16 +156,11 @@ def deck_page(deck_name):
         <button>덱 선택</button>
       </form>
 
-      {% if show %}
-        <div class="answer"><b>{{card["back"]}}</b></div>
-        {% if card.get("explanation") %}<div class="answer">{{card["explanation"]}}</div>{% endif %}
-        {% if card.get("example") %}<div class="example">{{card["example"]}}</div>{% endif %}
-      {% endif %}
-
     </body>
     </html>
-    """, deck_name=deck_name, card=card, used_str=used_str,
-       again_str=again_str, idx=idx, round_num=round_num, show=show)
+    """, deck_name=deck_name, card=card,
+       used_str=used_str, again_str=again_str, idx=idx,
+       round_num=round_num, show=show)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
