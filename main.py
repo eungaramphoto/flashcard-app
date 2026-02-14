@@ -1,8 +1,7 @@
-from flask import Flask, request, redirect, url_for, render_template_string
-import pandas as pd
+from flask import Flask, request, render_template_string
 import os
+import pandas as pd
 import random
-import urllib.parse
 
 app = Flask(__name__)
 
@@ -11,86 +10,78 @@ DECK_FOLDER = "decks"
 # 메인 화면: 덱 선택
 @app.route("/")
 def index():
-    decks = [f for f in os.listdir(DECK_FOLDER) if f.endswith(".xlsx")]
-    html = "<h1>덱 선택</h1>"
-    for d in decks:
-        html += f'<form style="margin:5px;" action="/deck/{urllib.parse.quote(d)}" method="get">'
-        html += f'<button type="submit">{d}</button></form>'
-    return html
+    deck_files = [f for f in os.listdir(DECK_FOLDER) if f.endswith(".xlsx")]
+    buttons = "".join([f'<form method="get" action="/deck/{f}"><button type="submit">{f}</button></form>' for f in deck_files])
+    return f"<h1>덱 선택</h1>{buttons}"
 
-# 덱 단어 학습 화면
-@app.route("/deck/<deck_file>")
-def deck_page(deck_file):
-    path = os.path.join(DECK_FOLDER, deck_file)
-    df = pd.read_excel(path)
-    df = df.dropna(subset=["front", "back"])
-
-    # 쿼리 파라미터 처리
-    current = int(request.args.get("current", 0))
+# 단어 학습 화면
+@app.route("/deck/<deck_name>")
+def deck_page(deck_name):
+    deck_path = os.path.join(DECK_FOLDER, deck_name)
+    df = pd.read_excel(deck_path).dropna(subset=["front", "back"])
+    # 현재 세션에서 사용중인 단어 인덱스 리스트 가져오기
     used = request.args.get("used", "")
-    again = request.args.get("again", "")
-
-    # used 리스트 안전 처리
-    if used and used != "[]":
-        used_list = [int(i) for i in used.split(",")]
-    else:
+    try:
+        used_list = [int(i) for i in used.split(",") if i.strip().isdigit()]
+    except:
         used_list = []
 
-    if again and again != "[]":
-        again_list = [int(i) for i in again.split(",")]
-    else:
-        again_list = []
+    # 다시 공부할 단어 리스트 가져오기
+    unknown = request.args.get("unknown", "")
+    try:
+        unknown_list = [int(i) for i in unknown.split(",") if i.strip().isdigit()]
+    except:
+        unknown_list = []
 
-    # 학습 리스트
-    all_indexes = list(range(len(df)))
-    remaining = [i for i in all_indexes if i not in used_list]
+    # 랜덤으로 다음 단어 선택
+    available_indices = [i for i in range(len(df)) if i not in used_list]
+    if not available_indices and unknown_list:
+        available_indices = unknown_list
+        unknown_list = []
 
-    # 모든 단어 끝났으면 다시 공부할 단어 리스트
-    if not remaining and again_list:
-        remaining = again_list
-        used_list = []
-        again_list = []
+    if not available_indices:
+        # 모든 단어 학습 완료 -> 피니시 화면
+        deck_files = [f for f in os.listdir(DECK_FOLDER) if f.endswith(".xlsx")]
+        buttons = "".join([f'<form method="get" action="/deck/{f}"><button type="submit">{f}</button></form>' for f in deck_files])
+        return f"<h1>Finished!</h1>{buttons}"
 
-    # 종료 조건
-    if not remaining:
-        html = "<h1>Finished!</h1>"
-        html += '<form action="/" method="get"><button type="submit">덱 선택</button></form>'
-        return html
+    current_idx = random.choice(available_indices)
+    front = df.iloc[current_idx]["front"]
+    back = df.iloc[current_idx]["back"]
+    explanation = df.iloc[current_idx].get("explanation", "")
+    example = df.iloc[current_idx].get("example", "")
 
-    idx = remaining[0]
-    word = df.iloc[idx]
+    # query string용 used_list, unknown_list 문자열로
+    new_used = ",".join(map(str, used_list + [current_idx]))
+    unknown_str = ",".join(map(str, unknown_list))
 
-    # HTML 템플릿
-    html = f"<h2>{word['front']}</h2>"
-    html += f'<form style="display:inline;" action="/deck/{urllib.parse.quote(deck_file)}" method="get">'
-    html += f'<input type="hidden" name="current" value="{idx}">'
-    html += f'<input type="hidden" name="used" value="{".".join(map(str, used_list))}">'
-    html += f'<input type="hidden" name="again" value="{".".join(map(str, again_list))}">'
-    html += f'<button type="submit" name="show" value="1">정답 보기</button></form>'
-
-    html += f'<form style="display:inline;" action="/deck/{urllib.parse.quote(deck_file)}" method="get">'
-    html += f'<input type="hidden" name="current" value="{idx}">'
-    html += f'<input type="hidden" name="used" value="{".".join(map(str, used_list + [idx]))}">'
-    html += f'<input type="hidden" name="again" value="{".".join(map(str, again_list))}">'
-    html += f'<button type="submit">알고있음</button></form>'
-
-    html += f'<form style="display:inline;" action="/deck/{urllib.parse.quote(deck_file)}" method="get">'
-    html += f'<input type="hidden" name="current" value="{idx}">'
-    html += f'<input type="hidden" name="used" value="{".".join(map(str, used_list + [idx]))}">'
-    html += f'<input type="hidden" name="again" value="{".".join(map(str, again_list + [idx]))}">'
-    html += f'<button type="submit">다시 공부하기</button></form>'
-
-    # 정답보기
+    html = f"""
+    <h1>{front}</h1>
+    <form method="get">
+        <input type="hidden" name="used" value="{new_used}">
+        <input type="hidden" name="unknown" value="{unknown_str}">
+        <button name="show" value="1">정답보기</button>
+        <button name="know" value="1">알고있음</button>
+        <button name="review" value="1">다시 공부하기</button>
+    </form>
+    """
+    # 정답보기 눌렀으면 아래 표시
     show = request.args.get("show")
-    if show == "1":
-        html += f"<p><b>{word['back']}</b></p>"
-        if "explanation" in word:
-            html += f"<p>{word['explanation']}</p>"
-        if "example" in word:
-            html += f"<p>{word['example']}</p>"
+    if show:
+        html += f"<hr><b>정답:</b> {back}<br><b>설명:</b> {explanation}<br><b>예문:</b> {example}<br>"
+
+    # 알고있음 눌렀으면 바로 다음 단어로
+    if request.args.get("know"):
+        return f'<meta http-equiv="refresh" content="0; url=/deck/{deck_name}?used={new_used}&unknown={unknown_str}">'
+
+    # 다시 공부하기 눌렀으면 unknown_list에 추가
+    if request.args.get("review"):
+        unknown_list.append(current_idx)
+        unknown_str = ",".join(map(str, unknown_list))
+        return f'<meta http-equiv="refresh" content="0; url=/deck/{deck_name}?used={new_used}&unknown={unknown_str}">'
 
     return html
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=10000)
 
