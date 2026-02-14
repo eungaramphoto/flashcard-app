@@ -4,7 +4,6 @@ import pandas as pd
 import random
 
 app = Flask(__name__)
-
 DECK_FOLDER = "decks"
 
 # 메인 화면: 덱 선택
@@ -17,7 +16,7 @@ def index():
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body { font-family:-apple-system, BlinkMacSystemFont, sans-serif; text-align:center; padding:50px 20px; }
+            body { font-family:-apple-system, BlinkMacSystemFont, sans-serif; text-align:center; padding:50px 20px; font-size:20px;}
             h1 { font-size:32px; margin-bottom:30px; }
             .deck-button { font-size:22px; padding:15px 25px; margin:10px; display:block; width:250px; margin-left:auto; margin-right:auto; }
         </style>
@@ -37,16 +36,15 @@ def index():
 # 카드 학습 화면
 @app.route("/deck/<deck_name>")
 def deck_page(deck_name):
-    # 엑셀 파일 로드
     path = os.path.join(DECK_FOLDER, deck_name)
     df = pd.read_excel(path).dropna(subset=["front","back"])
 
-    # URL 파라미터 안전 처리
-    used = request.args.get("used", "")
-    unknown = request.args.get("unknown", "")
-    current = request.args.get("current")
+    # URL 파라미터 처리
+    used = request.args.get("used","")
+    again = request.args.get("again","")
     show = request.args.get("show")
-    repeat_mode = request.args.get("repeat")
+    current = request.args.get("current")
+    repeat_level = int(request.args.get("level",1))
 
     try:
         used_list = [int(i) for i in used.split(",") if i.strip().isdigit()]
@@ -54,57 +52,41 @@ def deck_page(deck_name):
         used_list = []
 
     try:
-        unknown_list = [int(i) for i in unknown.split(",") if i.strip().isdigit()]
+        again_list = [int(i) for i in again.split(",") if i.strip().isdigit()]
     except:
-        unknown_list = []
+        again_list = []
 
-    # 첫 재생 또는 반복 재생 리스트 결정
+    # 재생 리스트 결정
     all_indices = list(range(len(df)))
-    if repeat_mode == "1":
-        remaining = [i for i in unknown_list if i not in used_list]
+    if again_list:
+        remaining = [i for i in again_list if i not in used_list]
+        level = repeat_level
     else:
         remaining = [i for i in all_indices if i not in used_list]
+        level = repeat_level
 
+    # 종료 조건
     if not remaining:
-        # 첫 재생 후 다시 공부 리스트 반복
-        if repeat_mode != "1" and unknown_list:
-            remaining = unknown_list
+        if again_list:
+            # 다음 재생: 다시 공부하기 리스트 반복, 회독 증가
+            remaining = again_list
             used_list = []
-            unknown_list = []
+            again_list = []
+            level += 1
         else:
-            # 모든 단어 학습 완료 -> Finished 화면
-            return render_template_string("""
-                <!doctype html>
-                <html>
-                <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    body { font-family:-apple-system, BlinkMacSystemFont, sans-serif; text-align:center; padding:60px 20px; }
-                    h1 { font-size:32px; margin-bottom:30px; }
-                    button { font-size:18px; padding:16px 25px; margin-top:20px; width:85%; max-width:400px; }
-                </style>
-                </head>
-                <body>
-                    <h1>Finished!</h1>
-                    <form action="/" method="get">
-                        <button type="submit">덱 목록으로</button>
-                    </form>
-                </body>
-                </html>
-            """)
+            html = f"<h1>Finished!</h1><form action='/' method='get'><button>덱 목록으로</button></form>"
+            return html
 
-    # 현재 카드 결정
+    # 현재 카드 선택
     if current and current.isdigit():
         idx = int(current)
     else:
         idx = random.choice(remaining)
 
     card = df.iloc[idx]
-
-    # used/unknown 리스트 업데이트
     new_used = used_list if show else used_list + [idx]
     used_str = ",".join(map(str,new_used))
-    unknown_str = ",".join(map(str,unknown_list))
+    again_str = ",".join(map(str,again_list))
 
     html = f"""
     <!doctype html>
@@ -115,23 +97,24 @@ def deck_page(deck_name):
             body {{ font-family:-apple-system, BlinkMacSystemFont, sans-serif; text-align:center; padding:30px 20px; }}
             .card {{ font-size:32px; margin-top:60px; }}
             .answer {{ font-size:22px; margin-top:20px; }}
-            .example {{ font-size:16px; max-width:700px; margin-left:auto; margin-right:auto; margin-top:15px; text-align:center; }}
-            button {{ font-size:18px; padding:14px 20px; margin:10px; width:80%; max-width:350px; display:block; margin-left:auto; margin-right:auto; }}
+            .example {{ font-size:16px; max-width:700px; margin:20px auto; text-align:center; }}
+            button {{ font-size:20px; padding:14px 20px; margin:15px auto; display:block; width:80%; max-width:350px; }}
+            h2,h4 {{ text-align:center; }}
         </style>
     </head>
     <body>
-        <h2>{deck_name}</h2>
+        <h2>{deck_name} ({level}회독)</h2>
         <div class="card">{card['front']}</div>
         <form method="get">
             <input type="hidden" name="used" value="{used_str}">
-            <input type="hidden" name="unknown" value="{unknown_str}">
+            <input type="hidden" name="again" value="{again_str}">
+            <input type="hidden" name="level" value="{level}">
             <button name="show" value="1">정답 보기</button>
             <button name="know" value="1">알고있음</button>
             <button name="review" value="1">다시 공부하기</button>
         </form>
     """
 
-    # 정답보기 눌렀을 때
     if show:
         html += f"""
         <div class="answer"><b>{card['back']}</b></div>
@@ -139,15 +122,16 @@ def deck_page(deck_name):
         <div class="example">{card.get('example','')}</div>
         """
 
-    # 알고있음 버튼 처리: 바로 다음 카드
+    # 알고있음 버튼 처리
     if request.args.get("know"):
-        return f'<meta http-equiv="refresh" content="0; url=/deck/{deck_name}?used={used_str}&unknown={unknown_str}">'
+        return f'<meta http-equiv="refresh" content="0; url=/deck/{deck_name}?used={used_str}&again={again_str}&level={level}">'
 
-    # 다시 공부하기 버튼 처리: unknown 리스트에 추가
+    # 다시 공부하기 버튼 처리
     if request.args.get("review"):
-        unknown_list.append(idx)
-        unknown_str = ",".join(map(str, unknown_list))
-        return f'<meta http-equiv="refresh" content="0; url=/deck/{deck_name}?used={used_str}&unknown={unknown_str}">'
+        if idx not in again_list:
+            again_list.append(idx)
+        again_str = ",".join(map(str,again_list))
+        return f'<meta http-equiv="refresh" content="0; url=/deck/{deck_name}?used={used_str}&again={again_str}&level={level}">'
 
     return html
 
