@@ -6,9 +6,11 @@ import random
 app = Flask(__name__)
 DECK_FOLDER = "decks"
 
+# 덱 목록 가져오기
 def get_deck_list():
     return [f for f in os.listdir(DECK_FOLDER) if f.endswith(".xlsx")]
 
+# 덱 로드
 def load_deck(deck_name):
     df = pd.read_excel(os.path.join(DECK_FOLDER, deck_name))
     df.columns = df.columns.str.strip()
@@ -43,27 +45,26 @@ def index():
 def deck_page(deck_name):
     df = load_deck(deck_name)
 
-    # URL 파라미터로 사용 단어 상태 전달
+    # URL 파라미터
     used = request.args.get("used")
     unknown = request.args.get("unknown")
     current = request.args.get("current")
     show = request.args.get("show")
-    
+    repeat_mode = request.args.get("repeat")
+
     used_list = [int(i) for i in used.split(",")] if used else []
     unknown_list = [int(i) for i in unknown.split(",")] if unknown else []
 
-    # 반복 모드 판단
-    repeat_mode = request.args.get("repeat")
+    # 반복 모드: 다시 공부하기 체크한 단어만
     if repeat_mode == "1":
-        # 모르는 단어만 반복
         remaining = [i for i in unknown_list if i not in used_list]
     else:
-        # 전체 단어 중 아직 안 본 단어
         remaining = [i for i in df.index if i not in used_list]
 
+    # 반복할 단어가 없으면
     if not remaining:
         if repeat_mode != "1" and unknown_list:
-            # 모르는 단어들만 반복
+            # 다시 공부하기 단어 반복
             return render_template_string(
                 finish_html, deck_name=deck_name, unknown=unknown_list
             )
@@ -73,18 +74,11 @@ def deck_page(deck_name):
                 finish_html, deck_name=deck_name, unknown=[]
             )
 
-    if current is None:
-        current_index = random.choice(remaining)
-    else:
-        current_index = int(current)
-    
+    current_index = int(current) if current else random.choice(remaining)
     card = df.loc[current_index]
 
     # used 리스트 업데이트
-    if show:
-        new_used = used_list
-    else:
-        new_used = used_list + [current_index]
+    new_used = used_list if show else used_list + [current_index]
     used_string = ",".join(str(i) for i in new_used)
     unknown_string = ",".join(str(i) for i in unknown_list)
 
@@ -107,29 +101,26 @@ def deck_page(deck_name):
 
     <div class="card">{{ word }}</div>
 
-    {% if not show %}
-        <a href="/deck/{{ deck_name }}?current={{ current_index }}&used={{ used_string }}&unknown={{ unknown_string }}&show=1">
-            <button>정답 보기</button>
-        </a>
-        <a href="/deck/{{ deck_name }}?current={{ current_index }}&used={{ new_used }}&unknown={{ unknown_string }}&repeat={{ repeat_mode | default(0) }}">
-            <button>알고있음</button>
-        </a>
-        <a href="/deck/{{ deck_name }}?current={{ current_index }}&used={{ used_list }}&unknown={{ unknown_string }},{{ current_index }}&repeat={{ repeat_mode | default(0) }}">
-            <button>다시 공부하기</button>
-        </a>
-    {% else %}
-        <div class="answer">
-            <div style="font-size:22px;"><strong>{{ answer }}</strong></div>
-            <div style="margin-top:10px; font-size:16px;">{{ explanation | replace('\\n','<br>') | safe }}</div>
-            <div class="example">{{ example | replace('\\n','<br>') | safe }}</div>
-        </div>
-        <a href="/deck/{{ deck_name }}?used={{ used_string }}&unknown={{ unknown_string }}&repeat={{ repeat_mode | default(0) }}">
-            <button>알고있음</button>
-        </a>
-        <a href="/deck/{{ deck_name }}?used={{ used_list }}&unknown={{ unknown_string }},{{ current_index }}&repeat={{ repeat_mode | default(0) }}">
-            <button>다시 공부하기</button>
-        </a>
+    {% if show %}
+    <div class="answer">
+        <div style="font-size:22px;"><strong>{{ answer }}</strong></div>
+        <div style="margin-top:10px; font-size:16px;">{{ explanation | replace('\\n','<br>') | safe }}</div>
+        <div class="example">{{ example | replace('\\n','<br>') | safe }}</div>
+    </div>
     {% endif %}
+
+    <!-- 항상 표시되는 버튼 4개 -->
+    <a href="/deck/{{ deck_name }}?current={{ current_index }}&used={{ used_string }}&unknown={{ unknown_string }}&show=1">
+        <button>정답 보기</button>
+    </a>
+
+    <a href="/deck/{{ deck_name }}?current={{ current_index }}&used={{ new_used }}&unknown={{ unknown_string }}&repeat={{ repeat_mode | default(0) }}">
+        <button>알고있음</button>
+    </a>
+
+    <a href="/deck/{{ deck_name }}?current={{ current_index }}&used={{ used_list }}&unknown={{ unknown_string }},{{ current_index }}&repeat={{ repeat_mode | default(0) }}">
+        <button>다시 공부하기</button>
+    </a>
 
     <a href="/"><button>덱 목록으로</button></a>
 
@@ -168,12 +159,6 @@ button { width:85%; max-width:400px; padding:16px; font-size:18px; margin-top:20
 </head>
 <body>
 <h1>Finished</h1>
-{% if unknown %}
-<p>체크한 단어만 다시 공부하세요</p>
-<a href="/deck/{{ deck_name }}?repeat=1&used=&unknown={{ unknown | join(',') }}">
-    <button>다시 공부하기</button>
-</a>
-{% endif %}
 <a href="/"><button>덱 목록으로</button></a>
 </body>
 </html>
