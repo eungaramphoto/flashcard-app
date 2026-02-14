@@ -1,11 +1,13 @@
-from flask import Flask, request, redirect, render_template_string
-import os
+from flask import Flask, render_template_string, redirect, request
 import pandas as pd
 import random
+import os
 
 app = Flask(__name__)
+
 DECK_FOLDER = "decks"
 
+# 덱 목록 페이지
 @app.route("/")
 def index():
     decks = [f for f in os.listdir(DECK_FOLDER) if f.endswith(".xlsx")]
@@ -30,13 +32,14 @@ def index():
     </html>
     """, decks=decks)
 
+# 덱 학습 페이지
 @app.route("/deck/<deck_name>")
 def deck_page(deck_name):
     path = os.path.join(DECK_FOLDER, deck_name)
-    df = pd.read_excel(path).dropna(subset=["front","back"])
+    df = pd.read_excel(path).dropna(subset=["front", "back"])
     words = df.to_dict(orient="records")
 
-    used = request.args.get("used","")
+    used = request.args.get("used", "")
     show = request.args.get("show")
     current = request.args.get("current")
 
@@ -51,23 +54,7 @@ def deck_page(deck_name):
     remaining = [i for i in total_indices if i not in used_list]
 
     if not remaining:
-        return render_template_string("""
-        <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body { font-family: Arial, sans-serif; text-align:center; margin-top:50px; font-size:24px; }
-                button { font-size:20px; padding:15px 30px; margin:12px auto; display:block; max-width:300px; width:80%; border-radius:6px; }
-            </style>
-        </head>
-        <body>
-            <h2>Finished!</h2>
-            <form method="get" action="/">
-                <button type="submit">덱 선택으로 돌아가기</button>
-            </form>
-        </body>
-        </html>
-        """)
+        return redirect(f"/finish?deck={deck_name}")
 
     if current and current.isdigit():
         idx = int(current)
@@ -76,7 +63,7 @@ def deck_page(deck_name):
 
     card = words[idx]
     new_used_list = used_list if show else used_list + [idx]
-    used_str = ",".join(map(str,new_used_list))
+    used_str = ",".join(map(str, new_used_list))
 
     return render_template_string("""
     <html>
@@ -127,7 +114,7 @@ def deck_page(deck_name):
 # 피니시 화면
 @app.route("/finish")
 def finish_page():
-    deck_name = request.args.get("deck","")
+    deck_name = request.args.get("deck", "")
     return render_template_string("""
     <html>
     <head>
