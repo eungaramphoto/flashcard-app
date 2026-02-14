@@ -1,159 +1,150 @@
-from flask import Flask, request, render_template_string
-import os
+from flask import Flask, request, redirect
+from flask import render_template_string
 import pandas as pd
+import os
 import random
 
 app = Flask(__name__)
+
 DECK_FOLDER = "decks"
 
-# 메인 화면
+# 덱 목록 페이지
 @app.route("/")
 def index():
-    decks = [f for f in os.listdir(DECK_FOLDER) if f.endswith(".xlsx")]
-    html = """
-    <!doctype html>
+    deck_files = [f for f in os.listdir(DECK_FOLDER) if f.endswith(".xlsx")]
+    return render_template_string("""
     <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body { font-family:-apple-system, BlinkMacSystemFont, sans-serif; text-align:center; padding:50px 20px; font-size:20px;}
-            h1 { font-size:32px; margin-bottom:30px; }
-            .deck-button { font-size:22px; padding:15px 25px; margin:10px; display:block; width:250px; margin-left:auto; margin-right:auto; }
-        </style>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial; text-align: center; margin-top: 50px; }
+        button { display: block; margin: 10px auto; padding: 10px 20px; font-size: 16px; }
+      </style>
     </head>
     <body>
-        <h1>덱 선택</h1>
-        {% for deck in decks %}
-            <form action="/deck/{{deck}}" method="get">
-                <button class="deck-button" type="submit">{{deck}}</button>
-            </form>
-        {% endfor %}
+      <h2>덱 선택</h2>
+      {% for deck in deck_files %}
+        <form method="get" action="/deck/{{deck}}">
+          <button type="submit">{{deck}}</button>
+        </form>
+      {% endfor %}
     </body>
     </html>
-    """
-    return render_template_string(html, decks=decks)
+    """, deck_files=deck_files)
 
-# 카드 학습 화면
+# 덱 페이지 초기화
 @app.route("/deck/<deck_name>")
 def deck_page(deck_name):
-    path = os.path.join(DECK_FOLDER, deck_name)
-    df = pd.read_excel(path).dropna(subset=["front","back"])
-
-    # URL 파라미터
-    used = request.args.get("used","")
-    again = request.args.get("again","")
-    show = request.args.get("show")
-    current = request.args.get("current")
-    repeat_level = int(request.args.get("level",1))
-
-    # 안전한 리스트 변환
-    def parse_list(param):
-        try:
-            return [int(i) for i in param.split(",") if i.strip().isdigit()]
-        except:
-            return []
-    used_list = parse_list(used)
-    again_list = parse_list(again)
-
-    # 첫 재생인지 다시 공부하기 재생인지 판단
-    if again_list:
-        remaining = [i for i in again_list if i not in used_list]
-        level = repeat_level
+    df = pd.read_excel(os.path.join(DECK_FOLDER, deck_name))
+    df = df.dropna(subset=["front", "back"])
+    words = df.to_dict(orient="records")
+    used = request.args.get("used", "")
+    unknown = request.args.get("unknown", "")
+    current = request.args.get("current", "0")
+    round_num = request.args.get("round", "1")
+    
+    # 현재 단어 순서 결정
+    if used:
+        used_list = [int(i) for i in used.split(",")]
     else:
-        remaining = [i for i in range(len(df)) if i not in used_list]
-        level = 1
-
-    # 종료 조건
-    if not remaining:
-        if again_list:
-            # 다음 회독 시작
-            remaining = again_list
-            used_list = []
-            again_list = []
-            level += 1
-        else:
-            # 모든 단어 완료
-            return render_template_string("""
-                <!doctype html>
-                <html>
-                <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    body { font-family:-apple-system, BlinkMacSystemFont, sans-serif; text-align:center; padding:60px 20px; }
-                    h1 { font-size:32px; margin-bottom:30px; }
-                    button { font-size:18px; padding:16px 25px; margin-top:20px; width:85%; max-width:400px; }
-                </style>
-                </head>
-                <body>
-                    <h1>Finished!</h1>
-                    <form action="/" method="get">
-                        <button>덱 목록으로</button>
-                    </form>
-                </body>
-                </html>
-            """)
-
-    # 현재 카드 선택
-    if current and current.isdigit():
-        idx = int(current)
+        used_list = []
+    if unknown:
+        unknown_list = [int(i) for i in unknown.split(",")]
     else:
-        idx = random.choice(remaining)
+        unknown_list = []
 
-    card = df.iloc[idx]
+    total_words = list(range(len(words)))
+    if current == "0":  # 첫 단어
+        remaining = total_words
+        random.shuffle(remaining)
+        next_index = remaining[0]
+    else:
+        remaining = [i for i in total_words if i not in used_list]
+        if not remaining:
+            # 1회독 끝났으면 unknown_list로 2회독 시작
+            if unknown_list:
+                remaining = unknown_list
+                round_num = str(int(round_num)+1)
+                unknown_list = []
+            else:
+                return redirect(f"/finish?deck={deck_name}")
+        random.shuffle(remaining)
+        next_index = remaining[0]
 
-    # used/again 문자열
-    new_used = used_list if show else used_list + [idx]
-    used_str = ",".join(map(str,new_used))
-    again_str = ",".join(map(str,again_list))
+    current_word = words[next_index]
 
-    html = f"""
-    <!doctype html>
+    return render_template_string("""
     <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body {{ font-family:-apple-system, BlinkMacSystemFont, sans-serif; text-align:center; padding:50px 20px; }}
-            h2 {{ font-size:28px; margin-bottom:30px; }}
-            .card {{ font-size:32px; margin-top:60px; }}
-            .answer {{ font-size:22px; margin-top:20px; }}
-            .example {{ font-size:16px; max-width:700px; margin:20px auto; text-align:center; }}
-            button {{ font-size:20px; padding:14px 20px; margin:15px auto; display:block; width:80%; max-width:350px; }}
-        </style>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial; text-align: center; margin-top: 50px; }
+        .card { font-size: 24px; margin: 20px; }
+        .example { font-size: 18px; color: gray; }
+        button { display: block; margin: 10px auto; padding: 10px 20px; font-size: 16px; }
+      </style>
     </head>
     <body>
-        <h2>{deck_name} ({level}회독)</h2>
-        <div class="card">{card['front']}</div>
-        <form method="get">
-            <input type="hidden" name="used" value="{used_str}">
-            <input type="hidden" name="again" value="{again_str}">
-            <input type="hidden" name="level" value="{level}">
-            <button name="show" value="1">정답 보기</button>
-            <button name="know" value="1">알고있음</button>
-            <button name="review" value="1">다시 공부하기</button>
-        </form>
-    """
+      <h3>{{deck_name}} - {{round_num}}회독</h3>
+      <div class="card">{{current_word["front"]}}</div>
 
-    # 정답보기
-    if show:
-        html += f"""
-        <div class="answer"><b>{card['back']}</b></div>
-        <div class="answer">{card.get('explanation','')}</div>
-        <div class="example">{card.get('example','')}</div>
-        """
+      <form method="get" action="/deck/{{deck_name}}">
+        <input type="hidden" name="used" value="{{used_list + [next_index] | join(',')}}">
+        <input type="hidden" name="unknown" value="{{unknown_list}}">
+        <input type="hidden" name="current" value="{{next_index}}">
+        <input type="hidden" name="round" value="{{round_num}}">
+        <button type="submit" name="show" value="1">정답보기</button>
+      </form>
 
-    # 알고있음 버튼: 바로 다음 카드
-    if request.args.get("know"):
-        return f'<meta http-equiv="refresh" content="0; url=/deck/{deck_name}?used={used_str}&again={again_str}&level={level}">'
+      <form method="get" action="/deck/{{deck_name}}">
+        <input type="hidden" name="used" value="{{used_list + [next_index] | join(',')}}">
+        <input type="hidden" name="unknown" value="{{unknown_list}}">
+        <input type="hidden" name="current" value="{{next_index}}">
+        <input type="hidden" name="round" value="{{round_num}}">
+        <button type="submit" name="know" value="1">알고있음</button>
+      </form>
 
-    # 다시 공부하기 버튼: 다시 공부 리스트에 저장
-    if request.args.get("review"):
-        if idx not in again_list:
-            again_list.append(idx)
-        again_str = ",".join(map(str,again_list))
-        return f'<meta http-equiv="refresh" content="0; url=/deck/{deck_name}?used={used_str}&again={again_str}&level={level}">'
+      <form method="get" action="/deck/{{deck_name}}">
+        <input type="hidden" name="used" value="{{used_list + [next_index] | join(',')}}">
+        <input type="hidden" name="unknown" value="{{unknown_list + [next_index] | join(',')}}">
+        <input type="hidden" name="current" value="{{next_index}}">
+        <input type="hidden" name="round" value="{{round_num}}">
+        <button type="submit" name="review" value="1">다시 공부하기</button>
+      </form>
 
-    return html
+      {% if request.args.get('show') %}
+        <div class="card">{{current_word["back"]}}</div>
+        {% if "explanation" in current_word %}<div class="example">{{current_word["explanation"]}}</div>{% endif %}
+        {% if "example" in current_word %}<div class="example">{{current_word["example"]}}</div>{% endif %}
+      {% endif %}
+
+    </body>
+    </html>
+    """, deck_name=deck_name, current_word=current_word,
+       used_list=used_list, unknown_list=unknown_list,
+       next_index=next_index, round_num=round_num, request=request)
+
+@app.route("/finish")
+def finish_page():
+    deck_name = request.args.get("deck", "")
+    return render_template_string("""
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial; text-align: center; margin-top: 50px; font-size: 24px; }
+        button { display: block; margin: 10px auto; padding: 10px 20px; font-size: 16px; }
+      </style>
+    </head>
+    <body>
+      <h2>Finished!</h2>
+      <form method="get" action="/">
+        <button type="submit">덱 선택으로 돌아가기</button>
+      </form>
+    </body>
+    </html>
+    """)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=5000)
 
