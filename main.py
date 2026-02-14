@@ -43,6 +43,7 @@ def index():
 def deck_page(deck_name):
     df = load_deck(deck_name)
 
+    # URL 파라미터
     used = request.args.get("used")
     unknown = request.args.get("unknown")
     current = request.args.get("current")
@@ -58,18 +59,11 @@ def deck_page(deck_name):
     else:
         remaining = [i for i in df.index if i not in used_list]
 
+    # 남은 카드 없으면 피니시 화면
     if not remaining:
-        if repeat_mode != "1" and unknown_list:
-            # 첫 재생 후 다시 공부 리스트 반복
-            return render_template_string(
-                finish_html, deck_name=deck_name, unknown=unknown_list
-            )
-        else:
-            # 모든 단어 학습 완료
-            return render_template_string(
-                finish_html, deck_name=deck_name, unknown=[]
-            )
+        return render_template_string(finish_html, deck_name=deck_name, unknown=remaining if repeat_mode=="1" else unknown_list)
 
+    # 남은 카드에서 current 선택
     current_index = int(current) if current else random.choice(remaining)
     card = df.loc[current_index]
 
@@ -160,5 +154,7 @@ button { width:85%; max-width:400px; padding:16px; font-size:18px; margin-top:20
 </html>
 """
 
-if __name__ == "__
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
