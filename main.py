@@ -22,16 +22,43 @@ def index():
     decks = get_deck_list()
 
     html = """
-    <h2 style="text-align:center;">덱 선택</h2>
-    <div style="text-align:center;">
+    <!doctype html>
+    <html>
+    <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        text-align: center;
+        padding: 30px 20px;
+    }
+    h2 {
+        font-size: 28px;
+        margin-bottom: 30px;
+    }
+    button {
+        width: 85%;
+        max-width: 400px;
+        padding: 16px;
+        font-size: 18px;
+        margin: 12px 0;
+    }
+    </style>
+    </head>
+    <body>
+
+    <h2>덱 선택</h2>
+
     {% for deck in decks %}
-        <div style="margin:15px;">
+        <div>
             <a href="/deck/{{ deck }}">
-                <button style="padding:12px 20px; font-size:16px;">{{ deck }}</button>
+                <button>{{ deck }}</button>
             </a>
         </div>
     {% endfor %}
-    </div>
+
+    </body>
+    </html>
     """
     return render_template_string(html, decks=decks)
 
@@ -53,14 +80,45 @@ def deck_page(deck_name):
 
         if not remaining:
             html = """
-            <h2>{{ deck_name }}</h2>
+            <!doctype html>
+            <html>
+            <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                text-align: center;
+                padding: 60px 20px;
+            }
+            h1 {
+                font-size: 32px;
+                margin-bottom: 30px;
+            }
+            button {
+                width: 85%;
+                max-width: 400px;
+                padding: 16px;
+                font-size: 18px;
+                margin-top: 20px;
+            }
+            </style>
+            </head>
+            <body>
+
             <h1>Finished</h1>
-            <br>
+
             <a href="/deck/{{ deck_name }}">
                 <button>다시 시작</button>
             </a>
-            <br><br>
-            <a href="/">덱 목록으로</a>
+
+            <br>
+
+            <a href="/">
+                <button>덱 목록으로</button>
+            </a>
+
+            </body>
+            </html>
             """
             return render_template_string(html, deck_name=deck_name)
 
@@ -103,11 +161,11 @@ def deck_page(deck_name):
         max-width: 700px;
         margin-left: auto;
         margin-right: auto;
-        text-align: center;   /* 여기 수정 */
+        text-align: center;
     }
     button {
         width: 85%;
-        max-width: 320px;
+        max-width: 400px;
         padding: 14px;
         font-size: 16px;
         margin-top: 20px;
@@ -131,24 +189,19 @@ def deck_page(deck_name):
     {% if show %}
     <div class="answer">
         <div style="font-size:22px;"><strong>{{ answer }}</strong></div>
-
         <div style="margin-top:10px; font-size:16px;">
             {{ explanation | replace('\\n','<br>') | safe }}
         </div>
-
         <div class="example">
             {{ example | replace('\\n','<br>') | safe }}
         </div>
     </div>
     {% endif %}
 
-    <br>
-
     <a href="/deck/{{ deck_name }}?used={{ used_string }}">
         <button>다음 문제</button>
     </a>
 
-    <br><br>
     <a href="/">
         <button>덱 목록으로</button>
     </a>
@@ -171,7 +224,6 @@ def deck_page(deck_name):
 
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
