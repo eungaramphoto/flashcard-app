@@ -1,5 +1,4 @@
 Flask==2.3.2
 pandas
 openpyxl
-gunicorn==20.2.0
-
+gunicorn
