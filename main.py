@@ -1,121 +1,160 @@
+from flask import Flask, request, redirect, render_template_string
 import os
-import random
-import sqlite3
 import pandas as pd
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, RedirectResponse
+import random
 
-DB = "jlpt.db"
+app = Flask(__name__)
 DECK_FOLDER = "decks"
 
-app = FastAPI()
-
-
-# ----------------------
-# DB 초기화
-# ----------------------
-def init_db():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS words (
-        id INTEGER,
-        deck TEXT,
-        front TEXT,
-        back TEXT,
-        explanation TEXT,
-        example TEXT
-    )
-    """)
-    conn.commit()
-    conn.close()
-
-
-def load_deck(deck):
-    path = os.path.join(DECK_FOLDER, deck)
-    if not os.path.exists(path):
-        return
-
-    df = pd.read_excel(path)
-
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("DELETE FROM words")
-
-    for _, row in df.iterrows():
-        c.execute("INSERT INTO words VALUES (?, ?, ?, ?, ?, ?)",
-                  (int(row["id"]), deck,
-                   row["front"], row["back"],
-                   row["explanation"], row["example"]))
-
-    conn.commit()
-    conn.close()
-
-
-# ----------------------
-# A단계 : 덱 선택
-# ----------------------
-@app.get("/", response_class=HTMLResponse)
-def select_deck():
+# 덱 선택 화면
+@app.route("/")
+def index():
     decks = [f for f in os.listdir(DECK_FOLDER) if f.endswith(".xlsx")]
-    html = "<h2>덱 선택</h2>"
-    for d in decks:
-        html += f'<a href="/start/{d}"><button>{d}</button></a><br><br>'
-    return html
+    return render_template_string("""
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial; text-align:center; margin-top:50px; }
+        button { display:block; margin:10px auto; padding:12px 25px; font-size:18px; }
+      </style>
+    </head>
+    <body>
+      <h1>덱 선택</h1>
+      {% for deck in decks %}
+        <form method="get" action="/deck/{{deck}}">
+          <button type="submit">{{deck}}</button>
+        </form>
+      {% endfor %}
+    </body>
+    </html>
+    """, decks=decks)
 
+# 단어 학습 화면
+@app.route("/deck/<deck_name>")
+def deck_page(deck_name):
+    path = os.path.join(DECK_FOLDER, deck_name)
+    df = pd.read_excel(path).dropna(subset=["front","back"])
+    words = df.to_dict(orient="records")
 
-@app.get("/start/{deck}")
-def start(deck: str):
-    load_deck(deck)
-    return RedirectResponse("/study", status_code=302)
+    # URL 파라미터
+    used = request.args.get("used","")
+    show = request.args.get("show")
+    current = request.args.get("current")
 
+    # 안전한 리스트 변환
+    def parse_list(param):
+        try:
+            return [int(i) for i in param.split(",") if i.strip().isdigit()]
+        except:
+            return []
 
-# ----------------------
-# 랜덤 재생
-# ----------------------
-@app.get("/study", response_class=HTMLResponse)
-def study():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT id, front FROM words")
-    rows = c.fetchall()
-    conn.close()
+    used_list = parse_list(used)
+    total_indices = list(range(len(words)))
 
-    if not rows:
-        return "<h3>덱을 먼저 선택하세요</h3><a href='/'>돌아가기</a>"
+    # 남은 단어 계산
+    remaining = [i for i in total_indices if i not in used_list]
 
-    word_id, front = random.choice(rows)
+    # 모든 단어 완료 → 피니시
+    if not remaining:
+        return render_template_string("""
+        <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body { font-family: Arial; text-align:center; margin-top:50px; font-size:24px; }
+            button { display:block; margin:10px auto; padding:12px 25px; font-size:18px; }
+          </style>
+        </head>
+        <body>
+          <h2>Finished!</h2>
+          <form method="get" action="/">
+            <button type="submit">덱 선택으로 돌아가기</button>
+          </form>
+        </body>
+        </html>
+        """)
 
-    return f"""
-    <p style="font-size:30px;">{front}</p>
+    # 현재 단어 선택
+    if current and current.isdigit():
+        idx = int(current)
+    else:
+        idx = random.choice(remaining)
 
-    <a href="/answer/{word_id}"><button>정답보기</button></a>
-    <a href="/study"><button>다음 단어</button></a>
-    <a href="/"><button>덱 선택화면으로</button></a>
-    """
+    card = words[idx]
 
+    # used 문자열 업데이트
+    new_used_list = used_list if show else used_list + [idx]
+    used_str = ",".join(map(str,new_used_list))
 
-@app.get("/answer/{word_id}", response_class=HTMLResponse)
-def answer(word_id: int):
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT back, explanation, example FROM words WHERE id=?", (word_id,))
-    row = c.fetchone()
-    conn.close()
+    return render_template_string("""
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial; text-align:center; padding:30px; }
+        h2 { font-size:28px; margin-bottom:30px; }
+        .card { font-size:32px; margin:20px auto; }
+        .answer { font-size:22px; margin-top:15px; }
+        .example { font-size:16px; max-width:700px; margin:15px auto; text-align:center; }
+        button { display:block; font-size:20px; padding:14px 20px; margin:10px auto; width:80%; max-width:350px; }
+      </style>
+    </head>
+    <body>
+      <h2>{{deck_name}}</h2>
 
-    if not row:
-        return RedirectResponse("/study", status_code=302)
+      <div class="card">{{card["front"]}}</div>
 
-    back, exl, exm = row
+      {% if show %}
+        <div class="answer"><b>{{card["back"]}}</b></div>
+        {% if card.get("explanation") %}<div class="answer">{{card["explanation"]}}</div>{% endif %}
+        {% if card.get("example") %}<div class="example">{{card["example"]}}</div>{% endif %}
+      {% endif %}
 
-    return f"""
-    <p><b>{back}</b></p>
-    <p>{exl}</p>
-    <p>{exm}</p>
+      <!-- 정답보기 -->
+      <form method="get" action="/deck/{{deck_name}}">
+        <input type="hidden" name="used" value="{{used_str}}">
+        <input type="hidden" name="current" value="{{idx}}">
+        <button name="show" value="1">정답 보기</button>
+      </form>
 
-    <a href="/study"><button>다음 단어</button></a>
-    """
+      <!-- 다음 문제 -->
+      <form method="get" action="/deck/{{deck_name}}">
+        <input type="hidden" name="used" value="{{used_str}}">
+        <button>다음 문제</button>
+      </form>
 
+      <!-- 덱 선택 -->
+      <form method="get" action="/">
+        <button>덱 선택</button>
+      </form>
 
-init_db()
+    </body>
+    </html>
+    """, deck_name=deck_name, card=card, used_str=used_str, idx=idx, show=show)
+
+# 피니시 화면
+@app.route("/finish")
+def finish_page():
+    deck_name = request.args.get("deck","")
+    return render_template_string("""
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial; text-align:center; margin-top:50px; font-size:24px; }
+        button { display:block; margin:10px auto; padding:12px 25px; font-size:18px; }
+      </style>
+    </head>
+    <body>
+      <h2>Finished!</h2>
+      <form method="get" action="/">
+        <button type="submit">덱 선택으로 돌아가기</button>
+      </form>
+    </body>
+    </html>
+    """)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
 
