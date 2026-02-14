@@ -38,7 +38,7 @@ def deck_page(deck_name):
     df = df.dropna(subset=["front", "back"])
     words = df.to_dict(orient="records")
 
-    # URL 파라미터 처리
+    # URL 파라미터 가져오기
     used = request.args.get("used", "")
     again = request.args.get("again", "")
     round_num = int(request.args.get("round", "1"))
@@ -54,26 +54,24 @@ def deck_page(deck_name):
     used_list = parse_list(used)
     again_list = parse_list(again)
 
-    # remaining 계산
-    if again_list:
-        # 다시 공부하기 회독
-        remaining = [i for i in again_list if i not in used_list]
-        level = round_num
-    else:
-        # 첫 회독
-        remaining = [i for i in range(len(words)) if i not in used_list]
-        level = round_num
+    total_indices = list(range(len(words)))
 
-    # 종료 조건
+    # remaining 계산 (안전 처리)
+    if again_list and round_num > 1:
+        remaining = [i for i in again_list if i not in used_list]
+    else:
+        remaining = [i for i in total_indices if i not in used_list]
+
+    # remaining이 비면 다음 회독 혹은 피니시 처리
     if not remaining:
         if again_list:
-            # 다시 공부하기 단어만 다음 회독
+            # 다음 회독 시작
             remaining = again_list
             used_list = []
             again_list = []
-            level += 1
+            round_num += 1
         else:
-            # 모든 단어 알고있음 처리 → 피니시
+            # 피니시 화면
             return render_template_string("""
             <html>
             <head>
@@ -100,6 +98,7 @@ def deck_page(deck_name):
 
     card = words[idx]
 
+    # URL 파라미터 문자열
     new_used = used_list if show else used_list + [idx]
     used_str = ",".join(map(str, new_used))
     again_str = ",".join(map(str, again_list))
@@ -118,7 +117,7 @@ def deck_page(deck_name):
       </style>
     </head>
     <body>
-      <h2>{{deck_name}} ({{level}}회독)</h2>
+      <h2>{{deck_name}} ({{round_num}}회독)</h2>
 
       <div class="card">{{card["front"]}}</div>
 
@@ -126,7 +125,7 @@ def deck_page(deck_name):
         <input type="hidden" name="used" value="{{used_str}}">
         <input type="hidden" name="again" value="{{again_str}}">
         <input type="hidden" name="current" value="{{idx}}">
-        <input type="hidden" name="round" value="{{level}}">
+        <input type="hidden" name="round" value="{{round_num}}">
         <button name="show" value="1">정답 보기</button>
       </form>
 
@@ -134,7 +133,7 @@ def deck_page(deck_name):
         <input type="hidden" name="used" value="{{used_str}}">
         <input type="hidden" name="again" value="{{again_str}}">
         <input type="hidden" name="current" value="{{idx}}">
-        <input type="hidden" name="round" value="{{level}}">
+        <input type="hidden" name="round" value="{{round_num}}">
         <button name="know" value="1">알고있음</button>
       </form>
 
@@ -142,7 +141,7 @@ def deck_page(deck_name):
         <input type="hidden" name="used" value="{{used_str}}">
         <input type="hidden" name="again" value="{{again_str}},{{idx}}">
         <input type="hidden" name="current" value="{{idx}}">
-        <input type="hidden" name="round" value="{{level}}">
+        <input type="hidden" name="round" value="{{round_num}}">
         <button name="review" value="1">다시 공부하기</button>
       </form>
 
@@ -159,7 +158,7 @@ def deck_page(deck_name):
     </body>
     </html>
     """, deck_name=deck_name, card=card, used_str=used_str,
-       again_str=again_str, idx=idx, level=level, show=show)
+       again_str=again_str, idx=idx, round_num=round_num, show=show)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
