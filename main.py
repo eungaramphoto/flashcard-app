@@ -85,6 +85,11 @@ def card(request: Request):
         request.session["wrong_indexes"] = []
         request.session["current"] = 0
         request.session["round"] = round_number + 1
+       
+        # 🔹 회차별 카운트 초기화        
+        request.session["remember_count"] = 0
+        request.session["forget_count"] = 0
+
 
         return templates.TemplateResponse("round_change.html", {
             "request": request,
