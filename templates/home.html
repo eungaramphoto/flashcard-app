@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>덱 선택</title>
+</head>
+<body>
+    <h1>학습할 덱 선택</h1>
+    <ul>
+        {% for deck in decks %}
+            <li>
+                <a href="/study/{{ deck }}">{{ deck }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+

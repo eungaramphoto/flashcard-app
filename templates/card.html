@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>학습</title>
+</head>
+<body>
+    <h2>{{ card.front }}</h2>
+
+    <details>
+        <summary>정답 보기</summary>
+        <p><strong>정답:</strong> {{ card.back }}</p>
+        <p><strong>해설:</strong> {{ card.explanation }}</p>
+        <p><strong>예문:</strong> {{ card.example }}</p>
+    </details>
+
+    <form method="post" action="/answer">
+        <button type="submit" name="remembered" value="yes">기억남</button>
+        <button type="submit" name="remembered" value="no">기억안남</button>
+    </form>
+</body>
+</html>
+

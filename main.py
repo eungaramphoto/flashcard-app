@@ -38,7 +38,8 @@ def study(request: Request, deck_name: str):
     request.session["wrong"] = []
     request.session["current"] = 0
 
-    return RedirectResponse(url="/card")
+    return RedirectResponse(url="/card", status_code=303)
+
 
 @app.get("/card", response_class=HTMLResponse)
 def card(request: Request):
