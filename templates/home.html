@@ -1,6 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f2f2f2;
+    padding: 20px;
+}
+
+.container {
+    max-width: 500px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+}
+
+h1 {
+    text-align: center;
+}
+
+a {
+    display: block;
+    padding: 12px;
+    margin: 8px 0;
+    background: #1976D2;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    text-align: center;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
 <h1>학습할 덱 선택</h1>
-<ul>
+
 {% for deck in decks %}
-    <li><a href="/study/{{ deck }}">{{ deck }}</a></li>
+<a href="/study/{{ deck }}">{{ deck }}</a>
 {% endfor %}
-</ul>
+
+</div>
+</body>
+</html>

@@ -1,18 +1,81 @@
-<h2>{{ round }}회차</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f2f2f2;
+}
 
-<div>
-진행률: {{ progress_current }} / {{ progress_total }} ({{ percent }}%)
+.container {
+    max-width: 500px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.round {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.progress {
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.word {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 40px 0;
+    text-align: center;
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+}
+
+.yes {
+    background: #4CAF50;
+    color: white;
+}
+
+.no {
+    background: #E53935;
+    color: white;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="round">{{ round }}회차</div>
+
+<div class="progress">
+진행 {{ progress_current }} / {{ progress_total }} ({{ percent }}%)
 </div>
 
-<div>
-현재 틀린 개수: {{ wrong_count }}
+<div class="word">
+{{ card.front }}
 </div>
-
-<hr>
-
-<h3>{{ card.front }}</h3>
 
 <form action="/answer" method="post">
-    <button name="remembered" value="yes">기억남</button>
-    <button name="remembered" value="no">기억안남</button>
+    <button class="yes" name="remembered" value="yes">기억남</button>
+    <button class="no" name="remembered" value="no">기억안남</button>
 </form>
+
+</div>
+</body>
+</html>
