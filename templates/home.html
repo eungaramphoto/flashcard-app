@@ -1,47 +1,97 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>덱 선택</title>
+
 <style>
 body {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #f2f2f2;
-    padding: 20px;
+    background:#f3f3f3;
+    font-family:-apple-system, BlinkMacSystemFont, sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:40px 0;
 }
 
 .container {
-    max-width: 500px;
-    margin: auto;
-    background: white;
-    padding: 20px;
-    border-radius: 15px;
+    width:95%;
+    max-width:700px;
 }
 
 h1 {
-    text-align: center;
+    text-align:center;
+    margin-bottom:30px;
 }
 
-a {
-    display: block;
-    padding: 12px;
-    margin: 8px 0;
-    background: #1976D2;
-    color: white;
-    text-decoration: none;
-    border-radius: 8px;
-    text-align: center;
+.item {
+    background:#e5e5e5;
+    padding:18px 20px;
+    border-radius:18px;
+    margin-bottom:10px;
+    cursor:pointer;
+    font-size:18px;
+}
+
+.folder {
+    font-weight:600;
+}
+
+.file a {
+    text-decoration:none;
+    color:black;
+    display:block;
+}
+
+.children {
+    margin-left:20px;
+    margin-top:5px;
+    display:none;
 }
 </style>
+
+<script>
+function toggle(id){
+    const el = document.getElementById(id);
+    if(el.style.display === "none" || el.style.display === ""){
+        el.style.display = "block";
+    } else {
+        el.style.display = "none";
+    }
+}
+</script>
 </head>
 
 <body>
 <div class="container">
 <h1>학습할 덱 선택</h1>
 
-{% for deck in decks %}
-<a href="/study/{{ deck }}">{{ deck }}</a>
-{% endfor %}
+{% macro render_tree(tree, path="") %}
+    {% for name, value in tree.items() %}
+
+        {% if value is mapping %}
+            <div class="item folder" onclick="toggle('folder_{{ loop.index0 }}_{{ path|replace('/', '_') }}')">
+                ▶ {{ name }}
+            </div>
+
+            <div class="children" id="folder_{{ loop.index0 }}_{{ path|replace('/', '_') }}">
+                {{ render_tree(value, path + '/' + name) }}
+            </div>
+
+        {% else %}
+            <div class="item file">
+                <a href="/study{{ path }}/{{ name }}">
+                    {{ name }}
+                </a>
+            </div>
+        {% endif %}
+
+    {% endfor %}
+{% endmacro %}
+
+{{ render_tree(tree) }}
 
 </div>
 </body>
 </html>
+

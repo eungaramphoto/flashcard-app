@@ -1,87 +1,133 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>학습</title>
-<style>
-body {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    text-align: center;
-    padding: 40px;
-    background: #f3f3f3;
-}
-.container {
-    background: white;
-    padding: 50px 30px;
-    margin: 20px auto;
-    max-width: 600px;
-    border-radius: 20px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-}
-.top-info {
-    color: #666;
-    margin-bottom: 6px;
-}
-h1 {
-    font-size: 36px;
-    margin: 40px 0;
-}
-button {
-    padding: 14px 22px;
-    margin: 10px;
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    cursor: pointer;
-}
-.show-btn { background: #bbb; }
-.yes-btn { background: #4CAF50; color: white; }
-.no-btn { background: #f44336; color: white; }
-.back-btn { background: #ddd; }
-</style>
-<script>
-function toggleAnswer() {
-    var el = document.getElementById("answerArea");
-    if (el.style.display === "none") {
-        el.style.display = "block";
-    } else {
-        el.style.display = "none";
-    }
-}
-</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학습</title>
+    <style>
+        body {
+            background: #f3f3f3;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 40px 0;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 700px;
+            text-align: center;
+        }
+
+        .info {
+            margin-bottom: 20px;
+            color: #666;
+        }
+
+        .card-box {
+            background: #e9e9e9;
+            padding: 80px 20px;
+            border-radius: 25px;
+            margin-bottom: 40px;
+        }
+
+        .word {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        .answer {
+            display: none;
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        button {
+            border: none;
+            border-radius: 18px;
+            padding: 18px;
+            font-size: 20px;
+            width: 100%;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        .btn-show {
+            background: #9e9e9e;
+            color: white;
+        }
+
+        .btn-yes {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-no {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-home {
+            background: #cfcfcf;
+        }
+
+    </style>
 </head>
-
 <body>
+    <div class="container">
+        <div class="info">
+            <div>{{ round }}회차</div>
+            <div>진행 {{ current }}/{{ total }} ({{ percent }}%)</div>
+            <div>기억 {{ remember_count }}개 / 기억안남 {{ forget_count }}개</div>
+        </div>
 
-<div class="top-info">{{ round }}회차</div>
-<div class="top-info">진행 {{ current }}/{{ total }} ({{ percent }}%)</div>
-<div class="top-info">기억 {{ remember_count }}개 / 기억안남 {{ forget_count }}개</div>
+        <div class="card-box">
+            <div class="word">{{ card.front }}</div>
 
-<div class="container">
+            <button class="btn-show" onclick="showAnswer()">정답보기</button>
 
-<h1>{{ card.front }}</h1>
+<div id="answer" class="answer">
 
-<div id="answerArea" style="display:none;">
-    <hr>
-    <p><strong>{{ card.back }}</strong></p>
-    <p>{{ card.explanation }}</p>
-    <p style="color:#777;">{{ card.example }}</p>
+    <div style="font-size:24px; font-weight:600; margin-top:15px;">
+        {{ card.back }}
+    </div>
+
+    {% if card.explanation %}
+    <div style="font-size:18px; margin-top:15px; color:#555;">
+        {{ card.explanation }}
+    </div>
+    {% endif %}
+
+    {% if card.example %}
+    <div style="font-size:16px; margin-top:10px; color:#777;">
+        {{ card.example }}
+    </div>
+    {% endif %}
+
 </div>
+        </div>
 
-<button onclick="toggleAnswer()" class="show-btn">정답보기</button>
+        <form method="post" action="/answer">
+            <input type="hidden" name="remembered" value="yes">
+            <button class="btn-yes">기억남</button>
+        </form>
 
-<form method="post" action="/answer">
-    <button name="remembered" value="yes" class="yes-btn">기억남</button>
-    <button name="remembered" value="no" class="no-btn">기억안남</button>
-</form>
+        <form method="post" action="/answer">
+            <input type="hidden" name="remembered" value="no">
+            <button class="btn-no">기억안남</button>
+        </form>
 
-</div>
+        <form action="/" method="get">
+            <button class="btn-home">덱 선택으로 돌아가기</button>
+        </form>
+    </div>
 
-<div style="margin-top:20px;">
-    <a href="/">
-        <button class="back-btn">덱 선택으로 돌아가기</button>
-    </a>
-</div>
-
+    <script>
+        function showAnswer() {
+            document.getElementById("answer").style.display = "block";
+        }
+    </script>
 </body>
 </html>
+

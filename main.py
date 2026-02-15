@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, Form
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -9,32 +10,57 @@ from natsort import natsorted
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key="super-secret-key")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 templates = Jinja2Templates(directory="templates")
 
 DECK_FOLDER = "decks"
 
+def get_deck_tree():
+    def build_tree(current_path):
+        tree = {}
 
-def get_deck_list():
-    files = [f for f in os.listdir(DECK_FOLDER) if f.endswith(".xlsx")]
-    return natsorted(files)
+        for item in sorted(os.listdir(current_path)):
+            full_path = os.path.join(current_path, item)
+
+            # 폴더면 재귀
+            if os.path.isdir(full_path):
+                tree[item] = build_tree(full_path)
+
+            # 엑셀 파일만 포함
+            elif item.lower().endswith(".xlsx"):
+                tree[item] = None
+
+        return tree
+
+    return build_tree(DECK_FOLDER)
+
 
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    decks = get_deck_list()
+    tree = get_deck_tree()
     return templates.TemplateResponse("home.html", {
         "request": request,
-        "decks": decks
+        "tree": tree
     })
 
 
-@app.get("/study/{deck_name}")
-def study(request: Request, deck_name: str):
-    file_path = os.path.join(DECK_FOLDER, deck_name)
+
+@app.get("/study/{deck_path:path}")
+def study(request: Request, deck_path: str):
+
+    # 실제 파일 경로 구성
+    file_path = os.path.join(DECK_FOLDER, deck_path)
+
+    # 파일 존재 확인
+    if not os.path.exists(file_path):
+        return HTMLResponse(f"<h2>파일을 찾을 수 없습니다:<br>{file_path}</h2>", status_code=404)
+
     df = pd.read_excel(file_path)
     total_count = len(df)
 
-    request.session["deck"] = deck_name
+    request.session["deck_path"] = deck_path
     request.session["total_count"] = total_count
     request.session["round"] = 1
     request.session["current"] = 0
@@ -53,17 +79,22 @@ def study(request: Request, deck_name: str):
 
 @app.get("/card", response_class=HTMLResponse)
 def card(request: Request):
-    deck_name = request.session.get("deck")
-    if not deck_name:
+
+    deck_path = request.session.get("deck_path")
+    if not deck_path:
         return RedirectResponse(url="/")
 
-    file_path = os.path.join(DECK_FOLDER, deck_name)
+    file_path = os.path.join(DECK_FOLDER, deck_path)
+
+    # 파일 존재 확인
+    if not os.path.exists(file_path):
+        return HTMLResponse(f"<h2>파일을 찾을 수 없습니다:<br>{file_path}</h2>", status_code=404)
+
     df = pd.read_excel(file_path)
 
     active_indexes = request.session.get("active_indexes", [])
     current = request.session.get("current", 0)
     round_number = request.session.get("round", 1)
-    total_count = request.session.get("total_count", 0)
 
     remember_count = request.session.get("remember_count", 0)
     forget_count = request.session.get("forget_count", 0)
@@ -73,6 +104,7 @@ def card(request: Request):
 
         wrong_indexes = request.session.get("wrong_indexes", [])
 
+        # 모든 단어 완료
         if not wrong_indexes:
             return templates.TemplateResponse("complete.html", {
                 "request": request,
@@ -85,18 +117,17 @@ def card(request: Request):
         request.session["wrong_indexes"] = []
         request.session["current"] = 0
         request.session["round"] = round_number + 1
-       
-        # 🔹 회차별 카운트 초기화        
+
+        # 🔹 회차별 카운트 초기화
         request.session["remember_count"] = 0
         request.session["forget_count"] = 0
-
 
         return templates.TemplateResponse("round_change.html", {
             "request": request,
             "round": round_number + 1
         })
 
-    # 🔹 현재 카드
+    # 🔹 현재 카드 출력
     index = active_indexes[current]
     card_data = df.iloc[index].to_dict()
 
