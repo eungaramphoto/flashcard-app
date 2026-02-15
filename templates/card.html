@@ -113,7 +113,9 @@ button {
 <script>
 function toggleAnswer() {
     var box = document.getElementById("answer");
-    if (box.style.display === "none") {
+    var current = window.getComputedStyle(box).display;
+
+    if (current === "none") {
         box.style.display = "block";
     } else {
         box.style.display = "none";

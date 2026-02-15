@@ -120,3 +120,8 @@ def round_change(request: Request):
         "round": request.session.get("round")
     })
 
+@app.get("/reset")
+def reset(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/")
+
