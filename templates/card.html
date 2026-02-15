@@ -7,75 +7,80 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     text-align: center;
-    padding: 30px;
-    background: #f7f7f7;
-}
-.card {
-    background: white;
     padding: 40px;
+    background: #f3f3f3;
+}
+.container {
+    background: white;
+    padding: 50px 30px;
     margin: 20px auto;
-    max-width: 500px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    max-width: 600px;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+.top-info {
+    color: #666;
+    margin-bottom: 6px;
+}
+h1 {
+    font-size: 36px;
+    margin: 40px 0;
 }
 button {
-    padding: 12px 20px;
-    margin: 8px;
+    padding: 14px 22px;
+    margin: 10px;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     font-size: 16px;
     cursor: pointer;
 }
-.show-btn { background: #ddd; }
+.show-btn { background: #bbb; }
 .yes-btn { background: #4CAF50; color: white; }
 .no-btn { background: #f44336; color: white; }
-.top-info {
-    margin-bottom: 10px;
-    font-size: 14px;
-    color: #666;
-}
+.back-btn { background: #ddd; }
 </style>
+<script>
+function toggleAnswer() {
+    var el = document.getElementById("answerArea");
+    if (el.style.display === "none") {
+        el.style.display = "block";
+    } else {
+        el.style.display = "none";
+    }
+}
+</script>
 </head>
 
 <body>
 
-<div class="top-info">
-  {{ round }}회차
+<div class="top-info">{{ round }}회차</div>
+<div class="top-info">진행 {{ current }}/{{ total }} ({{ percent }}%)</div>
+<div class="top-info">기억 {{ remember_count }}개 / 기억안남 {{ forget_count }}개</div>
+
+<div class="container">
+
+<h1>{{ card.front }}</h1>
+
+<div id="answerArea" style="display:none;">
+    <hr>
+    <p><strong>{{ card.back }}</strong></p>
+    <p>{{ card.explanation }}</p>
+    <p style="color:#777;">{{ card.example }}</p>
 </div>
 
-<div class="top-info">
-  진행 {{ current }}/{{ total }} ({{ percent }}%)
-</div>
+<button onclick="toggleAnswer()" class="show-btn">정답보기</button>
 
-<div class="top-info">
-  기억 {{ remember_count }}개 / 기억안남 {{ forget_count }}개
-</div>
+<form method="post" action="/answer">
+    <button name="remembered" value="yes" class="yes-btn">기억남</button>
+    <button name="remembered" value="no" class="no-btn">기억안남</button>
+</form>
 
-<div class="card">
-  <h2>{{ card.front }}</h2>
-
-  {% if show_answer %}
-      <hr>
-      <p><strong>{{ card.back }}</strong></p>
-      <p>{{ card.explanation }}</p>
-      <p style="color:#777;">{{ card.example }}</p>
-  {% endif %}
-
-  <form method="get" action="/card">
-      <input type="hidden" name="show" value="1">
-      <button type="submit" class="show-btn">정답보기</button>
-  </form>
-
-  <form method="post" action="/answer">
-      <button name="remembered" value="yes" class="yes-btn">기억남</button>
-      <button name="remembered" value="no" class="no-btn">기억안남</button>
-  </form>
 </div>
 
 <div style="margin-top:20px;">
-  <a href="/" style="text-decoration:none;">
-    <button>덱 선택으로 돌아가기</button>
-  </a>
+    <a href="/">
+        <button class="back-btn">덱 선택으로 돌아가기</button>
+    </a>
 </div>
 
 </body>
