@@ -12,7 +12,7 @@ deck_folder = './decks/'
 def get_deck_files():
     # 'decks' 폴더 내 모든 파일을 읽고, .xlsx 확장자를 가진 파일만 필터링
     files = [f for f in os.listdir(deck_folder) if f.endswith('.xlsx')]
-    # 파일 이름순으로 정렬
+    # 파일 이름순으로 정렬 (natsort를 사용할 수도 있습니다.)
     sorted_files = sorted(files)
     return sorted_files
 
@@ -48,6 +48,7 @@ def study(deck_name):
     # 현재 단어 인덱스
     current_word_index = request.args.get('index', 0, type=int)
     
+    # 모든 단어가 소진되었으면 피니시 화면으로 넘어가기
     if current_word_index >= len(words):
         return redirect(url_for('finished'))  # 모든 단어가 다 표시된 후 Finish 화면으로 이동
     
@@ -55,10 +56,6 @@ def study(deck_name):
     
     # 정답 보기 버튼 클릭시 back, explanation, example도 표시
     show_answer = request.args.get('show_answer', False, type=bool)
-
-    # 다시 공부하기 단어 저장
-    if 'study_again' in request.args:
-        study_again_word = current_word
 
     return render_template_string("""
     <h1>{{ deck_name }}</h1>
