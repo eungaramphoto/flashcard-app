@@ -22,7 +22,6 @@ body {
 .round {
     font-size: 14px;
     color: #666;
-    margin-bottom: 10px;
 }
 
 .progress {
@@ -37,6 +36,15 @@ body {
     text-align: center;
 }
 
+.answer-box {
+    display: none;
+    margin-top: 20px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
 button {
     width: 100%;
     padding: 15px;
@@ -44,6 +52,11 @@ button {
     border: none;
     border-radius: 10px;
     font-size: 16px;
+}
+
+.toggle {
+    background: #444;
+    color: white;
 }
 
 .yes {
@@ -71,11 +84,31 @@ button {
 {{ card.front }}
 </div>
 
+<button class="toggle" onclick="toggleAnswer()">정답 보기</button>
+
+<div id="answer" class="answer-box">
+<p><strong>정답:</strong> {{ card.back }}</p>
+<p><strong>설명:</strong> {{ card.explanation }}</p>
+<p><strong>예문:</strong> {{ card.example }}</p>
+</div>
+
 <form action="/answer" method="post">
     <button class="yes" name="remembered" value="yes">기억남</button>
     <button class="no" name="remembered" value="no">기억안남</button>
 </form>
 
 </div>
+
+<script>
+function toggleAnswer() {
+    var box = document.getElementById("answer");
+    if (box.style.display === "none") {
+        box.style.display = "block";
+    } else {
+        box.style.display = "none";
+    }
+}
+</script>
+
 </body>
 </html>
