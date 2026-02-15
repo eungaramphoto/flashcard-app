@@ -1,22 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>학습</title>
-</head>
-<body>
-    <h2>{{ card.front }}</h2>
+<h2>{{ round }}회차</h2>
 
-    <details>
-        <summary>정답 보기</summary>
-        <p><strong>정답:</strong> {{ card.back }}</p>
-        <p><strong>해설:</strong> {{ card.explanation }}</p>
-        <p><strong>예문:</strong> {{ card.example }}</p>
-    </details>
+<div>
+진행률: {{ progress_current }} / {{ progress_total }} ({{ percent }}%)
+</div>
 
-    <form method="post" action="/answer">
-        <button type="submit" name="remembered" value="yes">기억남</button>
-        <button type="submit" name="remembered" value="no">기억안남</button>
-    </form>
-</body>
-</html>
+<div>
+현재 틀린 개수: {{ wrong_count }}
+</div>
 
+<hr>
+
+<h3>{{ card.front }}</h3>
+
+<form action="/answer" method="post">
+    <button name="remembered" value="yes">기억남</button>
+    <button name="remembered" value="no">기억안남</button>
+</form>
