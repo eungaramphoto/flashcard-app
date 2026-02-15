@@ -1,3 +1,60 @@
-<h2>{{ round }}회차 완료</h2>
-<h3>모든 단어 학습 완료</h3>
-<a href="/">메인으로</a>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f2f2f2;
+}
+
+.container {
+    max-width: 500px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.title {
+    font-size: 22px;
+    margin-bottom: 20px;
+}
+
+.subtitle {
+    font-size: 16px;
+    margin-bottom: 30px;
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    background: #1976D2;
+    color: white;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="title">{{ round }}회차 완료</div>
+<div class="subtitle">모든 단어 학습 완료</div>
+
+<a href="/reset">
+    <button type="button">
+        덱 선택으로 돌아가기
+    </button>
+</a>
+
+</div>
+</body>
+</html>
