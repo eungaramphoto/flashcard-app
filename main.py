@@ -39,12 +39,14 @@ def study(request: Request, deck_name: str):
     request.session["round"] = 1
     request.session["current"] = 0
 
-    # 처음 회차는 전체 인덱스
     indexes = list(range(total_count))
     random.shuffle(indexes)
 
     request.session["active_indexes"] = indexes
     request.session["wrong_indexes"] = []
+
+    request.session["remember_count"] = 0
+    request.session["forget_count"] = 0
 
     return RedirectResponse(url="/card")
 
@@ -57,44 +59,54 @@ def card(request: Request):
 
     file_path = os.path.join(DECK_FOLDER, deck_name)
     df = pd.read_excel(file_path)
-    cards = df.to_dict(orient="records")
 
     active_indexes = request.session.get("active_indexes", [])
     current = request.session.get("current", 0)
-    round_num = request.session.get("round", 1)
-    wrong_indexes = request.session.get("wrong_indexes", [])
+    round_number = request.session.get("round", 1)
+    total_count = request.session.get("total_count", 0)
 
-    # 회차 종료
+    remember_count = request.session.get("remember_count", 0)
+    forget_count = request.session.get("forget_count", 0)
+
+    # 🔹 회차 종료 처리
     if current >= len(active_indexes):
+
+        wrong_indexes = request.session.get("wrong_indexes", [])
+
         if not wrong_indexes:
             return templates.TemplateResponse("complete.html", {
                 "request": request,
-                "round": round_num
+                "remember_count": remember_count,
+                "forget_count": forget_count
             })
 
-        # 다음 회차 시작
-        request.session["round"] = round_num + 1
-        request.session["active_indexes"] = wrong_indexes.copy()
+        # 다음 회차 준비
+        request.session["active_indexes"] = wrong_indexes
         request.session["wrong_indexes"] = []
         request.session["current"] = 0
+        request.session["round"] = round_number + 1
 
-        return RedirectResponse(url="/round-change")
+        return templates.TemplateResponse("round_change.html", {
+            "request": request,
+            "round": round_number + 1
+        })
 
+    # 🔹 현재 카드
     index = active_indexes[current]
-    card = cards[index]
+    card_data = df.iloc[index].to_dict()
 
-    progress_current = current + 1
     progress_total = len(active_indexes)
-    percent = int((progress_current / progress_total) * 100)
+    progress_percent = int((current / progress_total) * 100)
 
     return templates.TemplateResponse("card.html", {
         "request": request,
-        "card": card,
-        "round": round_num,
-        "progress_current": progress_current,
-        "progress_total": progress_total,
-        "percent": percent,
-        "wrong_count": len(wrong_indexes)
+        "card": card_data,
+        "round": round_number,
+        "current": current + 1,
+        "total": progress_total,
+        "percent": progress_percent,
+        "remember_count": remember_count,
+        "forget_count": forget_count
     })
 
 
@@ -104,13 +116,22 @@ def answer(request: Request, remembered: str = Form(...)):
     current = request.session.get("current", 0)
     wrong_indexes = request.session.get("wrong_indexes", [])
 
-    if remembered == "no":
+    remember_count = request.session.get("remember_count", 0)
+    forget_count = request.session.get("forget_count", 0)
+
+    if remembered == "yes":
+        remember_count += 1
+    else:
+        forget_count += 1
         wrong_indexes.append(active_indexes[current])
 
+    request.session["remember_count"] = remember_count
+    request.session["forget_count"] = forget_count
     request.session["wrong_indexes"] = wrong_indexes
     request.session["current"] = current + 1
 
     return RedirectResponse(url="/card", status_code=303)
+
 
 
 @app.get("/round-change", response_class=HTMLResponse)

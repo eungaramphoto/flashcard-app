@@ -1,127 +1,82 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>학습</title>
 <style>
 body {
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background: #f2f2f2;
+    text-align: center;
+    padding: 30px;
+    background: #f7f7f7;
 }
-
-.container {
-    max-width: 500px;
-    margin: auto;
+.card {
     background: white;
-    padding: 25px;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    padding: 40px;
+    margin: 20px auto;
+    max-width: 500px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
-
-.round {
+button {
+    padding: 12px 20px;
+    margin: 8px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+.show-btn { background: #ddd; }
+.yes-btn { background: #4CAF50; color: white; }
+.no-btn { background: #f44336; color: white; }
+.top-info {
+    margin-bottom: 10px;
     font-size: 14px;
     color: #666;
-}
-
-.progress {
-    font-size: 13px;
-    margin-bottom: 20px;
-}
-
-.word {
-    font-size: 28px;
-    font-weight: bold;
-    margin: 40px 0;
-    text-align: center;
-}
-
-.answer-box {
-    display: none;
-    margin-top: 20px;
-    padding: 15px;
-    background: #f9f9f9;
-    border-radius: 10px;
-    font-size: 14px;
-}
-
-button {
-    width: 100%;
-    padding: 15px;
-    margin-top: 10px;
-    border: none;
-    border-radius: 10px;
-    font-size: 16px;
-}
-
-.toggle {
-    background: #444;
-    color: white;
-}
-
-.yes {
-    background: #4CAF50;
-    color: white;
-}
-
-.no {
-    background: #E53935;
-    color: white;
-}
-
-.reset {
-    background: #999;
-    color: white;
 }
 </style>
 </head>
 
 <body>
-<div class="container">
 
-<div class="round">{{ round }}회차</div>
-
-<div class="progress">
-진행 {{ progress_current }} / {{ progress_total }} ({{ percent }}%)
+<div class="top-info">
+  {{ round }}회차
 </div>
 
-<div class="word">
-{{ card.front }}
+<div class="top-info">
+  진행 {{ current }}/{{ total }} ({{ percent }}%)
 </div>
 
-<button class="toggle" onclick="toggleAnswer()">정답 보기</button>
-
-<div id="answer" class="answer-box">
-<p><strong>정답:</strong> {{ card.back }}</p>
-<p><strong>설명:</strong> {{ card.explanation }}</p>
-<p><strong>예문:</strong> {{ card.example }}</p>
+<div class="top-info">
+  기억 {{ remember_count }}개 / 기억안남 {{ forget_count }}개
 </div>
 
-<form action="/answer" method="post">
-    <button class="yes" name="remembered" value="yes">기억남</button>
-    <button class="no" name="remembered" value="no">기억안남</button>
-</form>
+<div class="card">
+  <h2>{{ card.front }}</h2>
 
-<a href="/reset">
-    <button type="button" class="reset">
-        덱 선택으로 돌아가기
-    </button>
-</a>
+  {% if show_answer %}
+      <hr>
+      <p><strong>{{ card.back }}</strong></p>
+      <p>{{ card.explanation }}</p>
+      <p style="color:#777;">{{ card.example }}</p>
+  {% endif %}
 
+  <form method="get" action="/card">
+      <input type="hidden" name="show" value="1">
+      <button type="submit" class="show-btn">정답보기</button>
+  </form>
+
+  <form method="post" action="/answer">
+      <button name="remembered" value="yes" class="yes-btn">기억남</button>
+      <button name="remembered" value="no" class="no-btn">기억안남</button>
+  </form>
 </div>
 
-<script>
-function toggleAnswer() {
-    var box = document.getElementById("answer");
-    var current = window.getComputedStyle(box).display;
-
-    if (current === "none") {
-        box.style.display = "block";
-    } else {
-        box.style.display = "none";
-    }
-}
-</script>
+<div style="margin-top:20px;">
+  <a href="/" style="text-decoration:none;">
+    <button>덱 선택으로 돌아가기</button>
+  </a>
+</div>
 
 </body>
 </html>
