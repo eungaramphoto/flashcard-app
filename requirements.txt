@@ -1,6 +1,7 @@
-flask
+fastapi
+uvicorn
 pandas
 openpyxl
+jinja2
 natsort
-gunicorn
 
