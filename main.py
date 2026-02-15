@@ -75,3 +75,9 @@ def answer(request: Request, remembered: str = Form(...)):
     request.session["current"] = current + 1
     return RedirectResponse(url="/card", status_code=303)
 
+import uvicorn
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
+
