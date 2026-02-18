@@ -61,6 +61,10 @@ def study(request: Request, deck_path: str):
     total_count = len(df)
 
     request.session["deck_path"] = deck_path
+    
+    # 🔹 파일명(확장자 제거) 저장
+    file_name = os.path.splitext(os.path.basename(deck_path))[0]
+    request.session["file_name"] = file_name
     request.session["total_count"] = total_count
     request.session["round"] = 1
     request.session["current"] = 0
@@ -143,6 +147,7 @@ def card(request: Request):
         "percent": progress_percent,
         "remember_count": remember_count,
         "forget_count": forget_count
+        "file_name": request.session.get("file_name", "")
     })
 
 
