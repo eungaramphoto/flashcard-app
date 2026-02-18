@@ -146,7 +146,7 @@ def card(request: Request):
         "total": progress_total,
         "percent": progress_percent,
         "remember_count": remember_count,
-        "forget_count": forget_count
+        "forget_count": forget_count,
         "file_name": request.session.get("file_name", "")
     })
 
